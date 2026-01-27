@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Baralho</title>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0b3d2e">
+
+<style>
+body {
+    margin: 0;
+    font-family: system-ui, Arial, sans-serif;
+    background: #0b3d2e;
+    color: white;
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+}
+.app {
+    width: 100%;
+    max-width: 360px;
+    padding: 16px;
+    text-align: center;
+}
+img {
+    width: 100%;
+    max-width: 220px;
+    border-radius: 12px;
+    background: white;
+    display: block;
+    margin: 12px auto;
+}
+button {
+    width: 100%;
+    padding: 12px;
+    margin-top: 8px;
+    font-size: 1rem;
+    font-weight: bold;
+    border: none;
+    border-radius: 8px;
+    background: #f1c40f;
+}
+button:disabled {
+    background: #aaa;
+}
+.carta-container {
+    perspective: 1000px;
+}
+#cartaImg {
+    transition: transform 0.6s;
+}
+.flip {
+    transform: rotateY(180deg);
+}
+.miniaturas {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
+    gap: 6px;
+    max-height: 160px;
+    overflow-y: auto;
+}
+.miniaturas img {
+    border-radius: 4px;
+    background: white;
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+    <h1>🎴 Baralho</h1>
+
+    <div class="carta-container">
+        <img id="cartaImg"
+             src="https://deckofcardsapi.com/static/img/back.png">
+    </div>
+
+    <button id="botao" onclick="sortearCarta()">Sortear carta</button>
+    <button onclick="reiniciarBaralho()" style="background:#e74c3c">
+        Reiniciar baralho
+    </button>
+
+    <h3>Cartas sorteadas</h3>
+    <div id="miniaturas" class="miniaturas"></div>
+</div>
+
+<script>
+const STORAGE_KEY = "baralho-pwa";
+let baralho = [];
+
+const valores = ["A","2","3","4","5","6","7","8","9","0","J","Q","K"];
+const naipes = ["S","H","D","C"];
+
+function criarBaralho() {
+    baralho = [];
+    for (let v of valores)
+        for (let n of naipes)
+            baralho.push(v + n);
+    salvarEstado();
+}
+
+function nomeCarta(c) {
+    const v = {A:"Ás",J:"Valete",Q:"Dama",K:"Rei",0:"10"};
+    const n = {S:"♠ Espadas",H:"♥ Copas",D:"♦ Ouros",C:"♣ Paus"};
+    return `${v[c.slice(0,-1)] || c.slice(0,-1)} de ${n[c.slice(-1)]}`;
+}
+
+function mostrarCarta(carta, animar = true) {
+    const img = document.getElementById("cartaImg");
+    if (animar) {
+        img.classList.add("flip");
+        setTimeout(() => {
+            img.src = `https://deckofcardsapi.com/static/img/${carta}.png`;
+            img.classList.remove("flip");
+        }, 300);
+    } else {
+        img.src = `https://deckofcardsapi.com/static/img/${carta}.png`;
+    }
+}
+
+function adicionarMiniatura(carta) {
+    const img = document.createElement("img");
+    img.src = `https://deckofcardsapi.com/static/img/${carta}.png`;
+    img.title = nomeCarta(carta);
+    document.getElementById("miniaturas").appendChild(img);
+}
+
+function sortearCarta() {
+    if (baralho.length === 0) {
+        document.getElementById("botao").disabled = true;
+        alert("Baralho acabou!");
+        return;
+    }
+    const i = Math.floor(Math.random() * baralho.length);
+    const carta = baralho.splice(i,1)[0];
+
+    mostrarCarta(carta);
+    adicionarMiniatura(carta);
+    salvarEstado(carta);
+}
+
+function salvarEstado(cartaAtual=null) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        baralho,
+        miniaturas: [...document.querySelectorAll("#miniaturas img")]
+            .map(img => img.src.split("/").pop().replace(".png","")),
+        cartaAtual
+    }));
+}
+
+function carregarEstado() {
+    const dados = localStorage.getItem(STORAGE_KEY);
+    if (!dados) return false;
+
+    const estado = JSON.parse(dados);
+    baralho = estado.baralho || [];
+
+    document.getElementById("miniaturas").innerHTML = "";
+    estado.miniaturas.forEach(c => adicionarMiniatura(c));
+
+    if (estado.cartaAtual)
+        mostrarCarta(estado.cartaAtual, false);
+
+    if (baralho.length === 0)
+        document.getElementById("botao").disabled = true;
+
+    return true;
+}
+
+function reiniciarBaralho() {
+    if (!confirm("Reiniciar o baralho?")) return;
+
+    localStorage.removeItem(STORAGE_KEY);
+    criarBaralho();
+    document.getElementById("miniaturas").innerHTML = "";
+    document.getElementById("cartaImg").src =
+        "https://deckofcardsapi.com/static/img/back.png";
+    document.getElementById("botao").disabled = false;
+}
+
+if (!carregarEstado()) criarBaralho();
+
+if ("serviceWorker" in navigator)
+    navigator.serviceWorker.register("service-worker.js");
+</script>
+</body>
+</html>

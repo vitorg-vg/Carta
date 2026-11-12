@@ -1,0 +1,9 @@
+{
+  "name": "Arquivo Oculto — Fichas de RPG",
+  "short_name": "Arquivo Oculto",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#121015",
+  "theme_color": "#151216"
+}
